@@ -1,0 +1,10 @@
+# License information
+include LICENSE
+include NOTICE
+
+# README in reStructuredText format
+include README.rst
+
+# systemd Service file
+include connmonitor.service
+

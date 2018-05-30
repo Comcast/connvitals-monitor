@@ -1,0 +1,26 @@
+# python caching/object code files
+__pycache__/*
+*.pyo
+*.pyc
+
+#test input file
+test.input
+
+# Connvitals libs
+ping.py
+traceroute.py
+connvitals.py
+connvitals
+connvitals/*
+
+# Setuptools directories
+build
+dist
+*.egg-info*
+
+# Sublime text files
+*.sublime-*
+
+# Vim files
+*.swp
+
