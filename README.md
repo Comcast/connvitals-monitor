@@ -5,13 +5,21 @@
 Persistently monitors network conditions with respect to a set of specific hosts.
 
 ## Dependencies
-The executable for the connvitals-monitor package (`connmonitor`) runs on python3 (tested CPython 3.6.3) and requires a python3 interpreter. It also requires [connvitals](https://github.com/comcast/connvitals) to exist as a subdirectory in its directory (or your `import` path) as it uses that as a library.
+The executable for the connvitals-monitor package (`connmonitor`) runs on python3 (tested CPython 3.6.3) and requires a python3 interpreter. It also requires [`connvitals`](https://github.com/comcast/connvitals) to exist as a subdirectory in its directory (or your `import` path) as it uses that as a library.
 
 *Note: Because this package is not in a standard repository (nor is its dependency), dependencies cannot be automatically resolved; you must first install connvitals for this package to work.*
 
 ## Installation
 > *Note: Versions 1.2+ **only** support Linux systems that run systemd. It's possible that it may install on your system even if you do not run systemd, but it will attempt to install the Unit File under `/usr/lib/systemd/system`.*
-### From This Repository with `pip`
+
+### Via `pip` (Standard)
+By far the easiest way to install connvitals-monitor is to simply use `pip` like so:
+```
+pip install connmonitor
+```
+Note that you'll probably need to run this command with `sudo` or the `--user` flag.
+
+### Via `pip` (From This Repository)
 The easiest way to install is to simply use `pip`. You can install directly from this repository without needing to manually download it by running
 ```bash
 user@hostname ~ $ pip install git+https://github.com/comcast/connvitals-monitor.git#egg=connmonitor
