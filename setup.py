@@ -20,34 +20,23 @@ The setuptools-based install script for connvitals-monitor
 """
 
 import os
+import sys
 
 # RPMs generated for fedora/rhel/centos need to have a different name
 # (debian/ubuntu automatically prepends python3-, but those do not)
 import platform
 from setuptools import setup, find_packages
 
-pkgname = "connmonitor"
-depname = "connvitals"
-
-# I know this is deprecated, but it's the only way to get this information afaik
-distname = platform.linux_distribution(full_distribution_name=False)[0]
-if distname in  {'centos', 'fedora', 'redhat'}:
-	pkgname = "python3-"+pkgname
-	depname = "python3-"+depname
-elif not distname:
-	from sys import stderr
-	print("\033[38;2;255;0;0mconnvitals-monitor ONLY works on compatible *nix \
-distributions - '%s' is not supported.\033[38;2;255;255;255m" % platform.system(), file=stderr)
-	exit(1)
-
 here = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(here)
+import connmonitor
 
 with open(os.path.join(here, 'README.rst')) as f:
 	long_description = f.read()
 
 setup(
-	name=pkgname,
-	version='3.0.3',
+	name='connmonitor',
+	version=connmonitor.__version__,
 	description=\
 	'Uses the connvitals library to continuously poll and record network connectivity statistics.',
 	long_description=long_description,
@@ -82,8 +71,8 @@ setup(
 	],
 	keywords='network statistics connection ping traceroute port ip',
 	packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-	install_requires=[depname, 'setuptools', 'typing'],
-	data_files=[('/usr/lib/systemd/system', ['connmonitor.service'])],
+	install_requires=['connvitals', 'setuptools', 'typing'],
+	data_files=[('lib/systemd/system', ['connmonitor.service'])],
 	entry_points={
 		'console_scripts': [
 			'connmonitor=connmonitor:main',
