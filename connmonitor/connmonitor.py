@@ -21,6 +21,104 @@ import time
 import multiprocessing
 from connvitals import utils, config, collector, ports, traceroute
 
+class Collector(collector.collector):
+	"""
+	The connvitals-monitor collector, that overrides parts of the
+	connvitals collector.
+	"""
+
+	def run(self):
+		"""
+		Called when the thread is run
+		"""
+		global printFunc, SLEEP, collector
+
+		with multiprocessing.pool.ThreadPool() as pool:
+			try:
+				while True:
+					time.sleep(SLEEP / 1000)
+
+					if config.PORTSCAN:
+						pscanResult = pool.apply_async(ports.portScan,
+													   (self.host, pool),
+													   error_callback = utils.error)
+					if config.TRACE:
+						traceResult = pool.apply_async(traceroute.trace,
+													   (self.host,),
+													   error_callback = utils.error)
+
+					if not config.NOPING:
+						try:
+							self.ping(pool)
+						except (multiprocessing.TimeoutError, ValueError):
+							self.result[0] = type(self).result[0]
+					if config.TRACE:
+						try:
+							self.result[1] = traceResult.get(config.HOPS)
+						except multiprocessing.TimeoutError:
+							self.result[1] = type(self).result[1]
+					if config.PORTSCAN:
+						try:
+							self.result[2] = pscanResult.get(0.5)
+						except multiprocessing.TimeoutError:
+							self.result[2] = type(self).result[2]
+
+					printFunc(self)
+			except KeyboardInterrupt:
+				pass
+			except Exception as e:
+				utils.error(e, 1)
+
+	def __str__(self) -> str:
+		"""
+		Implements `str(self)`
+
+		Returns a plaintext output result
+		"""
+		ret = []
+		if self.host[0] == self.hostname:
+			ret.append(self.hostname)
+		else:
+			ret.append("%s (%s)" % (self.hostname, self.host[0]))
+
+		ret.append(time.ctime())
+
+		pings, trace, scans = self.result
+
+		if pings:
+			ret.append(str(pings))
+		if trace and trace != self.trace:
+			self.trace = trace
+			ret.append(str(trace))
+		if scans:
+			ret.append(str(scans))
+
+		return "\n".join(ret)
+
+	def __repr__(self) -> repr:
+		"""
+		Implements `repr(self)`
+
+		Returns a JSON output result
+		"""
+		ret = [r'{"addr":"%s"' % self.host[0]]
+		ret.append(r'"name":"%s"' % self.hostname)
+
+		if not config.NOPING:
+			ret.append(r'"ping":%s' % repr(self.result[0]))
+
+		if config.TRACE and self.trace != self.result[1]:
+			self.trace = self.result[1]
+			ret.append(r'"trace":%s' % repr(self.result[1]))
+
+		if config.PORTSCAN:
+			ret.append(r'"scan":%s' % repr(self.result[2]))
+
+		ret.append(r'"timestamp":%f' % (time.time()*1000))
+
+		return ','.join(ret) + '}'
+
+
 collectors, confFile, SLEEP, printFunc = [], None, -1, lambda x: print(x, flush=True)
 
 def hangup(unused_sig: int, unused_frame: object):
@@ -81,53 +179,6 @@ def main() -> int:
 		confFile = sys.argv[1]
 
 	readConf()
-
-
-	def loopedRun(self: 'collector.Collector'):
-		"""
-		This function replaces `Collector.run`, by simply calling the old `.run` repeatedly
-		"""
-		global printFunc, SLEEP, collector
-
-
-		with multiprocessing.pool.ThreadPool() as pool:
-			try:
-				while True:
-					time.sleep(SLEEP / 1000)
-
-					if config.PORTSCAN:
-						pscanResult = pool.apply_async(ports.portScan,
-													   (self.host, pool),
-													   error_callback = utils.error)
-					if config.TRACE:
-						traceResult = pool.apply_async(traceroute.trace,
-													   (self.host,),
-													   error_callback = utils.error)
-
-					if not config.NOPING:
-						try:
-							self.ping(pool)
-						except (multiprocessing.TimeoutError, ValueError):
-							self.result[0] = type(self).result[0]
-					if config.TRACE:
-						try:
-							self.result[1] = traceResult.get(config.HOPS)
-						except multiprocessing.TimeoutError:
-							self.result[1] = type(self).result[1]
-					if config.PORTSCAN:
-						try:
-							self.result[2] = pscanResult.get(0.5)
-						except multiprocessing.TimeoutError:
-							self.result[2] = type(self).result[2]
-
-					printFunc(self)
-			except KeyboardInterrupt:
-				pass
-			except Exception as e:
-				utils.error(e, 1)
-
-	# Replace Collector.run
-	collector.Collector.run = loopedRun
 
 	# Start the collectors
 	for c in collectors:
@@ -203,7 +254,7 @@ def readConf():
 			sys.stderr.flush()
 		else:
 			config.HOSTS[host] = addrinfo
-			collectors.append(collector.Collector(host))
+			collectors.append(Collector(host))
 
 	if not config.HOSTS:
 		utils.error(Exception("No hosts could be parsed!"), fatal=True)
