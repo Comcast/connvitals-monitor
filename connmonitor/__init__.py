@@ -19,7 +19,7 @@ A tool that persistently monitors network conditions with respect to a set of sp
 
 __author__ = "Brennan W. Fieck"
 
-__version__ = "3.0.4"
+__version__ = "3.1.0"
 
 import sys
 

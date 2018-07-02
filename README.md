@@ -76,6 +76,8 @@ where the fields have the following meanings
 
 Starting with version 3.0, `connmonitor` will no longer output traces if they are determined to be the same as the most recent route previously recorded for a given host. This is as a result of changes made to connvitals (but only the Python version) which are discussed in greater detail on [that project's page](https://github.com/comcast/connvitals).
 
+Starting with version 3.1, `connmonitor` will output a timestamp as a part of the JSON object (a floating-point number in milliseconds since the UNIX Epoch), and will output a human-readable date and time in the plaintext output on the second line (directly after names/IP addresses) in the system's `ctime` format. All timestamps are given in the timezone for which the system is configured.
+
 
 ### Example
 Here's an example of a configuration file that will gather port scans and ping statistics for 10 pings per run each having a payload of 1337B - but not route traces - from google.com, github.com and the address 127.0.0.1 (localhost) every half-second and outputs in connvitals's standard, plain-text format:

@@ -187,6 +187,13 @@ made to connvitals (but only the Python version) which are discussed in
 greater detail on `that project's
 page <https://github.com/comcast/connvitals>`__.
 
+Starting with version 3.1, ``connmonitor`` will output a timestamp as a
+part of the JSON object (a floating-point number in milliseconds since
+the UNIX Epoch), and will output a human-readable date and time in the
+plaintext output on the second line (directly after names/IP addresses)
+in the system's ``ctime`` format. All timestamps are given in the
+timezone for which the system is configured.
+
 Example
 ~~~~~~~
 
