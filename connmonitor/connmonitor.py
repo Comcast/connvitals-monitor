@@ -21,7 +21,7 @@ import time
 import multiprocessing
 from connvitals import utils, config, collector, ports, traceroute
 
-class Collector(collector.collector):
+class Collector(collector.Collector):
 	"""
 	The connvitals-monitor collector, that overrides parts of the
 	connvitals collector.
