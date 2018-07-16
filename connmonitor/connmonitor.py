@@ -247,14 +247,14 @@ def readConf():
 		printFunc = lambda x: print(repr(x), flush=True)
 
 	#collect host names and valid ip addresses
-	for host in hosts:
+	for i,host in enumerate(hosts):
 		addrinfo = utils.getaddr(host)
 		if not addrinfo:
 			utils.error(Exception("Unable to resolve host ( %s )" % host))
 			sys.stderr.flush()
 		else:
 			config.HOSTS[host] = addrinfo
-			collectors.append(Collector(host))
+			collectors.append(Collector(host,i))
 
 	if not config.HOSTS:
 		utils.error(Exception("No hosts could be parsed!"), fatal=True)
