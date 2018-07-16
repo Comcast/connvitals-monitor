@@ -44,7 +44,7 @@ class Collector(collector.Collector):
 													   error_callback = utils.error)
 					if config.TRACE:
 						traceResult = pool.apply_async(traceroute.trace,
-													   (self.host,),
+													   (self.host, self.ID),
 													   error_callback = utils.error)
 
 					if not config.NOPING:
