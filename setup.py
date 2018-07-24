@@ -71,7 +71,7 @@ setup(
 	],
 	keywords='network statistics connection ping traceroute port ip',
 	packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-	install_requires=['connvitals', 'setuptools', 'typing'],
+	install_requires=['connvitals==4.1.0', 'setuptools', 'typing'],
 	data_files=[('lib/systemd/system', ['connmonitor.service'])],
 	entry_points={
 		'console_scripts': [
