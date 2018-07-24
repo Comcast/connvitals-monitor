@@ -31,43 +31,52 @@ class Collector(collector.Collector):
 		"""
 		Called when the thread is run
 		"""
-		global printFunc, SLEEP, collector
+		global SLEEP
 
 		with multiprocessing.pool.ThreadPool() as pool:
 			try:
 				while True:
-					time.sleep(SLEEP / 1000)
+					time.sleep(SLEEP[self.ID] / 1000)
 
-					if config.PORTSCAN:
+					if self.conf.PORTSCAN:
 						pscanResult = pool.apply_async(ports.portScan,
 													   (self.host, pool),
 													   error_callback = utils.error)
-					if config.TRACE:
+					if self.conf.TRACE:
 						traceResult = pool.apply_async(traceroute.trace,
-													   (self.host, self.ID),
+													   (self.host, self.ID, self.conf),
 													   error_callback = utils.error)
 
-					if not config.NOPING:
+					if not self.conf.NOPING:
 						try:
 							self.ping(pool)
 						except (multiprocessing.TimeoutError, ValueError):
 							self.result[0] = type(self).result[0]
-					if config.TRACE:
+					if self.conf.TRACE:
 						try:
-							self.result[1] = traceResult.get(config.HOPS)
+							self.result[1] = traceResult.get(self.conf.HOPS)
 						except multiprocessing.TimeoutError:
 							self.result[1] = type(self).result[1]
-					if config.PORTSCAN:
+					if self.conf.PORTSCAN:
 						try:
 							self.result[2] = pscanResult.get(0.5)
 						except multiprocessing.TimeoutError:
 							self.result[2] = type(self).result[2]
 
-					printFunc(self)
+					self.print()
 			except KeyboardInterrupt:
 				pass
 			except Exception as e:
 				utils.error(e, 1)
+
+	def print(self):
+		"""
+		Prints this collector, using a method dependent on its configuration
+		"""
+		if self.conf.JSON:
+			print(repr(self))
+		else:
+			print(self)
 
 	def __str__(self) -> str:
 		"""
@@ -85,12 +94,12 @@ class Collector(collector.Collector):
 
 		pings, trace, scans = self.result
 
-		if pings:
+		if pings and not self.conf.NOPING:
 			ret.append(str(pings))
-		if trace and trace != self.trace:
+		if trace and trace != self.trace and self.conf.TRACE:
 			self.trace = trace
 			ret.append(str(trace))
-		if scans:
+		if scans and self.conf.PORTSCAN:
 			ret.append(str(scans))
 
 		return "\n".join(ret)
@@ -104,14 +113,14 @@ class Collector(collector.Collector):
 		ret = [r'{"addr":"%s"' % self.host[0]]
 		ret.append(r'"name":"%s"' % self.hostname)
 
-		if not config.NOPING:
+		if not self.conf.NOPING:
 			ret.append(r'"ping":%s' % repr(self.result[0]))
 
-		if config.TRACE and self.trace != self.result[1]:
+		if self.conf.TRACE and self.trace != self.result[1]:
 			self.trace = self.result[1]
 			ret.append(r'"trace":%s' % repr(self.result[1]))
 
-		if config.PORTSCAN:
+		if self.conf.PORTSCAN:
 			ret.append(r'"scan":%s' % repr(self.result[2]))
 
 		ret.append(r'"timestamp":%f' % (time.time()*1000))
@@ -119,7 +128,7 @@ class Collector(collector.Collector):
 		return ','.join(ret) + '}'
 
 
-collectors, confFile, SLEEP, printFunc = [], None, -1, lambda x: print(x, flush=True)
+collectors, confFile, SLEEP = [], None, {}
 
 def hangup(unused_sig: int, unused_frame: object):
 	"""
@@ -189,7 +198,7 @@ def main() -> int:
 	try:
 		while True:
 			try:
-				time.sleep(0.5)
+				time.sleep(max(SLEEP.values()) / 900)
 				if not collectors or not any(c.is_alive() for c in collectors):
 					return 1
 			except ContinueException:
@@ -219,44 +228,42 @@ def readConf():
 			file = open(confFile)
 		except OSError as e:
 			utils.error(FileNotFoundError("Couldn't read input file '%s'"%e), fatal=True)
-		hosts = file.read().strip().split("\n")
+		hosts = file.readlines()
 		file.close()
 
 	# Closing stdin can cause huge problems, esp. for e.g. debuggers
 	else:
-		hosts = sys.stdin.read().strip().split("\n")
+		hosts = sys.stdin.readlines()
 
 	# You need to clear this, or the monitor will keep querying old hosts.
 	collectors = []
 
 	#parse args
-	try:
-		args = [int(arg) for arg in hosts.pop(0).strip().split(" ")]
-		config.NOPING   = args[0] == 0
-		config.TRACE    = args[1] != 0
-		config.PORTSCAN = args[2] != 0
-		config.NUMPINGS = args[3]
-		config.PAYLOAD  = args[4]
-		config.HOPS     = args[5]
-		config.JSON     = args[6] != 0
-		SLEEP           = args[7]
-	except (IndexError, ValueError) as e:
-		utils.error(IOError("Bad configuration file format, caused error: (%s)" % e), True)
-
-	if config.JSON:
-		printFunc = lambda x: print(repr(x), flush=True)
-
-	#collect host names and valid ip addresses
 	for i,host in enumerate(hosts):
+		args = host.split()
+		host = args.pop(0)
 		addrinfo = utils.getaddr(host)
 		if not addrinfo:
 			utils.error(Exception("Unable to resolve host ( %s )" % host))
 			sys.stderr.flush()
 		else:
-			config.HOSTS[host] = addrinfo
-			collectors.append(Collector(host,i))
+			try:
+				args = [int(arg) for arg in args]
+				print(args)
+				conf = config.Config(NOPING   = args[0] == 0,
+				                     TRACE    = args[1] != 0,
+				                     PORTSCAN = args[2] != 0,
+				                     NUMPINGS = args[3],
+				                     PAYLOAD  = args[4],
+				                     HOPS     = args[5],
+				                     JSON     = args[6] != 0,
+				                     HOSTS    = {host: addrinfo})
+				SLEEP[i] = args[7]
+				collectors.append(Collector(host,i,conf=conf))
+			except (IndexError, ValueError) as e:
+				utils.error(IOError("Bad configuration file format, caused error: (%s)" % e), True)
 
-	if not config.HOSTS:
+	if not SLEEP:
 		utils.error(Exception("No hosts could be parsed!"), fatal=True)
 
 class ContinueException(Exception):
