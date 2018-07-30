@@ -28,7 +28,7 @@ def main():
 	Runs the main connmonitor script
 	"""
 	if len(sys.argv) > 1 and sys.argv[1] in {'-V', '--version'}:
-		print("python3-connmonitor Version %s" % __version__)
+		print("connmonitor Version %s" % __version__)
 		exit()
 
 	import connvitals.config

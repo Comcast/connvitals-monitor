@@ -19,7 +19,57 @@ import sys
 import signal
 import time
 import multiprocessing
-from connvitals import utils, config, collector, ports, traceroute
+from connvitals import utils, collector, ports, traceroute
+
+def optionalFlagParse(raw:str) -> bool:
+	"""
+	Parses the allowed values for the optional JSON and TIMESTAMP
+	configuration flags, and returns their value as a boolean.
+	"""
+	try:
+		return bool(int(raw))
+	except ValueError:
+		try:
+			return {"FALSE": False, "TRUE": True}[raw]
+		except KeyError:
+			raise ValueError("Invalid value: %s" % raw)
+
+# This maps parsing tokens to actions to take on their values
+config = {"PING": float,
+          "TRACE": float,
+          "SCAN": float,
+          "NUMPINGS": int,
+          "PAYLOAD": int,
+          "HOPS": int,
+          "JSON": optionalFlagParse,
+          "TIMESTAMP": optionalFlagParse}
+
+class Config():
+	"""
+	This extends the configuration options provided by connvitals to include
+	sleep durations for each type of statistic.
+	"""
+	HOPS = 30
+	JSON = False
+	NUMPINGS = 10
+	PAYLOAD = b'The very model of a modern Major General.'
+	PING = 500.0
+	PORTSCAN = 0.0
+	TIMESTAMP = True
+	TRACE = 0.0
+
+	def __init__(self,**kwargs):
+		"""
+		An extremely simple initializer that sets the objects attributes
+		based on the passed dictionary of arguments.
+		"""
+		self.__dict__.update(kwargs)
+
+	def __repr__(self) -> str:
+		"""
+		Prints out all options of a configuration
+		"""
+		return "Config(%s)" % ", ".join("%s=%r" % (k, v) for k,v in self.__dict__.items() )
 
 class Collector(collector.Collector):
 	"""
@@ -31,104 +81,137 @@ class Collector(collector.Collector):
 		"""
 		Called when the thread is run
 		"""
-		global SLEEP
 
-		with multiprocessing.pool.ThreadPool() as pool:
+		# Determine output headers now to save time later
+		self.plaintextHdr = self.hostname
+		if self.host[0] != self.hostname:
+			self.plaintextHdr += " " + self.host[0]
+
+		if self.conf.TIMESTAMP:
+			self.jsonHdr = '{"addr":"%s","name":"%s","timestamp":%%f,%%s}'
+		else:
+			self.jsonHdr = '{"addr":"%s", "name":"%s", %%s}'
+		self.jsonHdr %= (self.host[0], self.hostname)
+
+		with multiprocessing.pool.ThreadPool(3) as pool:
 			try:
-				while True:
-					time.sleep(SLEEP[self.ID] / 1000)
+				waitables = []
 
-					if self.conf.PORTSCAN:
-						pscanResult = pool.apply_async(ports.portScan,
-													   (self.host, pool),
-													   error_callback = utils.error)
-					if self.conf.TRACE:
-						traceResult = pool.apply_async(traceroute.trace,
-													   (self.host, self.ID, self.conf),
-													   error_callback = utils.error)
+				if self.conf.SCAN:
+					waitables.append(pool.apply_async(self.portscanloop, (), error_callback=utils.error))
+				if self.conf.TRACE:
+					waitables.append(pool.apply_async(self.traceloop, (), error_callback=utils.error))
 
-					if not self.conf.NOPING:
-						try:
-							self.ping(pool)
-						except (multiprocessing.TimeoutError, ValueError):
-							self.result[0] = type(self).result[0]
-					if self.conf.TRACE:
-						try:
-							self.result[1] = traceResult.get(self.conf.HOPS)
-						except multiprocessing.TimeoutError:
-							self.result[1] = type(self).result[1]
-					if self.conf.PORTSCAN:
-						try:
-							self.result[2] = pscanResult.get(0.5)
-						except multiprocessing.TimeoutError:
-							self.result[2] = type(self).result[2]
+				if self.conf.PING:
+					waitables.append(pool.apply_async(self.pingloop, (), error_callback=utils.error))
 
-					self.print()
+				for waitable in waitables:
+					waitable.wait()
+
 			except KeyboardInterrupt:
 				pass
 			except Exception as e:
 				utils.error(e, 1)
 
-	def print(self):
+	def pingloop(self):
 		"""
-		Prints this collector, using a method dependent on its configuration
+		Runs a loop for collecting ping statistics as specified in the
+		configuration.
 		"""
-		if self.conf.JSON:
-			print(repr(self))
+		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
+		try:
+			with multiprocessing.pool.ThreadPool() as pool:
+				while True:
+					self.ping(pool)
+					printFunc()
+					time.sleep(self.conf.PING / 1000)
+		except KeyboardInterrupt:
+			pass
+
+	def traceloop(self):
+		"""
+		Runs a loop for the route traces specified in the configuration
+		"""
+		printFunc = self.printJSONTrace if self.conf.JSON else self.printTrace
+		try:
+			while True:
+				result = traceroute.trace(self.host, self.ID, self.conf)
+				if self.trace != result:
+					self.trace = result
+					printFunc(result)
+
+				time.sleep(self.conf.TRACE / 1000)
+		except KeyboardInterrupt:
+			pass
+
+	def portscanloop(self):
+		"""
+		Runs a loop for port scanning.
+		"""
+		printFunc = self.printJSONScan if self.conf.JSON else self.printScan
+		try:
+			with multiprocessing.pool.ThreadPool(3) as pool:
+				while True:
+					printFunc(ports.portScan(self.host, pool))
+					time.sleep(self.conf.SCAN / 1000)
+		except KeyboardInterrupt:
+			pass
+
+	def printPing(self):
+		"""
+		Prints a ping result, in plaintext
+		"""
+		if self.conf.TIMESTAMP:
+			print(self.plaintextHdr, time.ctime(), str(self.result[0]), sep='\n', flush=True)
 		else:
-			print(self)
+			print(self.plaintextHdr, str(self.result[0]), sep='\n', flush=True)
 
-	def __str__(self) -> str:
+	def printJSONPing(self):
 		"""
-		Implements `str(self)`
-
-		Returns a plaintext output result
+		Prints a ping result, in JSON
 		"""
-		ret = []
-		if self.host[0] == self.hostname:
-			ret.append(self.hostname)
+		if self.conf.TIMESTAMP:
+			print(self.jsonHdr % (time.time() * 1000, '"ping":' + repr(self.result[0])), flush=True)
 		else:
-			ret.append("%s (%s)" % (self.hostname, self.host[0]))
+			print(self.jsonHdr % ('"ping":' + repr(self.result[0])), flush=True)
 
-		ret.append(time.ctime())
-
-		pings, trace, scans = self.result
-
-		if pings and not self.conf.NOPING:
-			ret.append(str(pings))
-		if trace and trace != self.trace and self.conf.TRACE:
-			self.trace = trace
-			ret.append(str(trace))
-		if scans and self.conf.PORTSCAN:
-			ret.append(str(scans))
-
-		return "\n".join(ret)
-
-	def __repr__(self) -> repr:
+	def printTrace(self, trace:utils.Trace):
 		"""
-		Implements `repr(self)`
-
-		Returns a JSON output result
+		Prints a route trace, in plaintext
 		"""
-		ret = [r'{"addr":"%s"' % self.host[0]]
-		ret.append(r'"name":"%s"' % self.hostname)
+		if self.conf.TIMESTAMP:
+			print(self.plaintextHdr, time.ctime(), utils.traceToStr(trace), sep='\n', flush=True)
+		else:
+			print(self.plaintextHdr, utils.traceToStr(trace), sep='\n', flush=True)
 
-		if not self.conf.NOPING:
-			ret.append(r'"ping":%s' % repr(self.result[0]))
+	def printJSONTrace(self, trace:utils.Trace):
+		"""
+		prints a route trace, in JSON
+		"""
+		if self.conf.TIMESTAMP:
+			print(self.jsonHdr % (time.time() * 1000, '"trace":' + utils.traceRepr(trace)), flush=True)
+		else:
+			print(self.jsonHdr % ('"trace":' + utils.traceRepr(trace)), flush=True)
 
-		if self.conf.TRACE and self.trace != self.result[1]:
-			self.trace = self.result[1]
-			ret.append(r'"trace":%s' % repr(self.result[1]))
+	def printScan(self, scan:utils.ScanResult):
+		"""
+		Prints a port scan, in plaintext
+		"""
+		if self.conf.TIMESTAMP:
+			print(self.plaintextHdr, time.ctime(), str(scan), sep='\n', flush=True)
+		else:
+			print(self.plaintextHdr, str(scan), sep='\n', flush=True)
 
-		if self.conf.PORTSCAN:
-			ret.append(r'"scan":%s' % repr(self.result[2]))
+	def printJSONScan(self, scan:utils.ScanResult):
+		"""
+		Prints a port scan, in JSON
+		"""
+		if self.conf.TIMESTAMP:
+			print(self.jsonHdr % (time.time() * 1000, '"scan":' + repr(scan)), flush=True)
+		else:
+			print(self.jsonHdr % ('"scan":' + repr(scan)), flush=True)
 
-		ret.append(r'"timestamp":%f' % (time.time()*1000))
-
-		return ','.join(ret) + '}'
-
-
-collectors, confFile, SLEEP = [], None, {}
+collectors, confFile = [], None
 
 def hangup(unused_sig: int, unused_frame: object):
 	"""
@@ -198,7 +281,7 @@ def main() -> int:
 	try:
 		while True:
 			try:
-				time.sleep(max(SLEEP.values()) / 900)
+				time.sleep(5)
 				if not collectors or not any(c.is_alive() for c in collectors):
 					return 1
 			except ContinueException:
@@ -219,7 +302,7 @@ def readConf():
 	Reads a configuration file. Expects a file object, which can be a true
 	file or a pipe such as stdin
 	"""
-	global collectors, confFile, SLEEP, printFunc
+	global collectors, confFile, config
 
 	# Try to open config file if exists, fatal error if file pointed to
 	# Does not/no longer exist(s)
@@ -246,24 +329,20 @@ def readConf():
 		if not addrinfo:
 			utils.error(Exception("Unable to resolve host ( %s )" % host))
 			sys.stderr.flush()
-		else:
-			try:
-				args = [int(arg) for arg in args]
-				print(args)
-				conf = config.Config(NOPING   = args[0] == 0,
-				                     TRACE    = args[1] != 0,
-				                     PORTSCAN = args[2] != 0,
-				                     NUMPINGS = args[3],
-				                     PAYLOAD  = args[4],
-				                     HOPS     = args[5],
-				                     JSON     = args[6] != 0,
-				                     HOSTS    = {host: addrinfo})
-				SLEEP[i] = args[7]
-				collectors.append(Collector(host,i,conf=conf))
-			except (IndexError, ValueError) as e:
-				utils.error(IOError("Bad configuration file format, caused error: (%s)" % e), True)
+			continue
 
-	if not SLEEP:
+		conf = {"HOSTS": {host: addrinfo}}
+		try:
+			for arg, value in [a.upper().split('=') for a in args]:
+				conf[arg] = config[arg](value)
+		except ValueError as e:
+			utils.error(IOError("Error parsing value for %s: %s" % (arg,e)), True)
+		except KeyError as e:
+			utils.error(IOError("Error in config file - unknown option '%s'" % arg), True)
+
+		collectors.append(Collector(host, i+1, Config(**conf)))
+
+	if not collectors:
 		utils.error(Exception("No hosts could be parsed!"), fatal=True)
 
 class ContinueException(Exception):
