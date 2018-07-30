@@ -47,28 +47,32 @@ Upon receiving `SIGHUP` (e.g. when the terminal used to run it is closed), `conn
 Starting with version 1.2.1, connvitals-monitor (unfortunately) comes packaged with a systemd Unit File, and will attempt to install it. To run the daemon, simply run `systemctl start connmonitor` (as root), and to stop it run `systemctl stop connmonitor` (also as root). By default, the monitor will log its `stdout` in JSON format to `/var/log/connmonitor.log`, and its `stderr` to `/var/log/connmonitor.err`. Whenever the monitor is started, it looks for a configuration file at `/var/run/connmonitor.conf`, and creates it if it does not exist with the following default contents (see 'Input Format'):
 ```
 1 1 1 10 41 40 1 500
-localhost
+localhost trace=500 hops=40 scan=500
 ```
 The monitor service does **not** check for filesystem updates to that config file; if you wish to edit it you may safely do so, but should run `systemctl reload connmonitor` to read in the new configuration.
 
 ### Input Format
 connmonitor expects input formatted like this:
 ```
-DOPINGS DOTRACE DOPSCAN NUMPINGS PAYLOAD HOPS JSON SLEEP
-host1
-host2
-host3
+host1 ping=500 trace=30000 hops=40 scan=60000 json=1
+host2 ping=50 numpings=10 payload=41
+host3 trace=1000 hops=10
 ...
 ```
-where the fields have the following meanings
-* `DOPINGS` is either `0` to indicate that pings should not be sent, or any other integer (typically `1`) to indicate that they should be sent.
-* `DOTRACE` is either `0` to indicate that route tracing should not be done, or any other integer (typically `1`) to indicate they should be done.
-* `DOPSCAN` is either `0` to indicate that port scanning should not be done, or any other integer (typically `1`) to indicate they should be done.
-* `NUMPINGS` is a positive integer indicating the number of pings to be sent. If `DOPINGS` is `0`, this is not used, but **must still be specified**. Note that - in general - setting `NUMPINGS` to `0` is less efficient than setting `DOPINGS` to `0`.
-* `PAYLOAD` is a positive integer indicating the size of each *ping* payload. If `DOPINGS` is `0`, this is not used, but **must still be specified**. It is recommended that this be at least 14.
-* `HOPS` is a positive integer that sets the maximum number of network hops to be considered in route tracing. If `DOTRACE` is `0`, this is not used, but **must still be specified**. It is recommended that this be at least 15 for testing hosts that are not on LAN. Note that - in general - setting `HOPS` to `0` is less efficient than setting `DOTRACE` to `0`.
-* `JSON` is either `0` to indicate that output should not be formatted as JSON, or any other integer (typically `1`) to indicate that output *should* be formatted as JSON.
-* `SLEEP` is the amount of time for the process to "sleep" between queries of its hosts (in milliseconds).
+Note that config lines (except the hostname part, when applicable) are cAsE-iNsEnSiTiVe.
+
+Each line of the config *must* begin with a host. This can be either an IP address or a Fully-Qualified Domain Name (FQDN). Currently, IPv6 is not supported, and if an FQDN can only be resolved to an IPv6 address it will not be queried.
+After the host, a list of options in the format `<name>=<value>` can be specified. If an option is not specified, a default value is used. The options and their valid values are:
+
+* `ping` - can be set to any positive, rational number or 0 (zero). This indicates the frequency at which pings are performed by specifying a duration (in milliseconds) to wait between each burst of pings. A value of 0 indicates that pings should not be sent. Default: 500
+* `numpings` - can be set to any positive integer. Indicates the number of pings that should be sent in a "burst". Default: 10
+* `payload` - can be set to any positive integer. This indicates the size in bytes of a payload to be sent with each ping. Typically, this will have little to no impact on ping results, but can, in some networks/situations diagnose specific issues. Default: 41
+* `trace` - can be set to any positive, rational number or 0 (zero). This indicates the frequency at which route traces are done by specifying a duration (in milliseconds) to wait between each route trace. A new route trace will not begin until the previous one has finished, so setting this to values lower than network latency to the target is typically meaningless. A value of 0 (zero) indicates that route traces should not be performed. Default: 0 (zero)
+* `hops` - can be set to any positive integer. This indicates the number of network hops to be used as an upper limit on route traces. The default value typically suffices in most situations. Default: 30
+* `json` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the output of this host's statistics will be in JSON format rather than the plain-text format. Default: `False`
+* `timestamp` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the outputs of this hosts's statistics will always contain timestamps indicating the time at which printing occurs. Default: `True`
+
+Configuration options can appear in any order and can be separated by any amount/kind of whitespace except for line terminators (Line Feed, Carriage Return, Form Feed etc.). However, the same option _cannot_ be specified multiple times on the same line, even if it always appears with the same value.
 
 
 ### Output Format
@@ -78,12 +82,12 @@ Starting with version 3.0, `connmonitor` will no longer output traces if they ar
 
 Starting with version 3.1, `connmonitor` will output a timestamp as a part of the JSON object (a floating-point number in milliseconds since the UNIX Epoch), and will output a human-readable date and time in the plaintext output on the second line (directly after names/IP addresses) in the system's `ctime` format. All timestamps are given in the timezone for which the system is configured.
 
+Starting with version 4.0, each statistic is reported individually, and not bundled together the way `connvitals` outputs them. This essentially looks like a separate output for each statistic, as though each were invoked seperately by a different `connvitals` invokation. Prior to this version, configurations were global and all statistics were gathered at the same frequency.
+
 
 ### Example
-Here's an example of a configuration file that will gather port scans and ping statistics for 10 pings per run each having a payload of 1337B - but not route traces - from google.com, github.com and the address 127.0.0.1 (localhost) every half-second and outputs in connvitals's standard, plain-text format:
+Here's an example of a configuration file that will gather port scans and ping statistics for 10 pings per run each having a payload of 1337B - but not route traces - from google.com every half-second with output in `connvitals`'s standard, plain-text output, and do limited port scanning and traceroutes (to a maximum of 30 hops) - but not pings - on the address 127.0.0.1 (localhost) every 50 milliseconds with output in JSON format:
 ```
-1 0 1 10 1337 100 0 500
-google.com
-github.com
-127.0.0.1
+google.com ping=500 payload=1337 scan=500
+127.0.0.1 trace=50 json=1 scan=50
 ```
