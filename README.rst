@@ -122,7 +122,6 @@ Format'):
 
 ::
 
-    1 1 1 10 41 40 1 500
     localhost trace=500 hops=40 scan=500
 
 The monitor service does **not** check for filesystem updates to that
@@ -173,6 +172,11 @@ cAsE-iNsEnSiTiVe.
 -  ``hops`` - can be set to any positive integer. This indicates the
    number of network hops to be used as an upper limit on route traces.
    The default value typically suffices in most situations. Default: 30
+-  ``scan`` - can be set to any positive, rational number or 0 (zero).
+   This indicates the frequency at which route traces are done by
+   specifying a duration (in milliseconds) to wait between each port
+   scan. A value of 0 (zero) indicates that port scans should not be
+   done. Default: 0 (zero)
 -  ``json`` - can be set to any integer or 0 (zero), *or* one of the
    Python boolean constants: ``True`` and ``False``. If this value is
    any non-zero integer or ``True``, then the output of this host's

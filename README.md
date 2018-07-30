@@ -46,7 +46,6 @@ Upon receiving `SIGHUP` (e.g. when the terminal used to run it is closed), `conn
 ### As a `systemd` daemon
 Starting with version 1.2.1, connvitals-monitor (unfortunately) comes packaged with a systemd Unit File, and will attempt to install it. To run the daemon, simply run `systemctl start connmonitor` (as root), and to stop it run `systemctl stop connmonitor` (also as root). By default, the monitor will log its `stdout` in JSON format to `/var/log/connmonitor.log`, and its `stderr` to `/var/log/connmonitor.err`. Whenever the monitor is started, it looks for a configuration file at `/var/run/connmonitor.conf`, and creates it if it does not exist with the following default contents (see 'Input Format'):
 ```
-1 1 1 10 41 40 1 500
 localhost trace=500 hops=40 scan=500
 ```
 The monitor service does **not** check for filesystem updates to that config file; if you wish to edit it you may safely do so, but should run `systemctl reload connmonitor` to read in the new configuration.
@@ -69,6 +68,7 @@ After the host, a list of options in the format `<name>=<value>` can be specifie
 * `payload` - can be set to any positive integer. This indicates the size in bytes of a payload to be sent with each ping. Typically, this will have little to no impact on ping results, but can, in some networks/situations diagnose specific issues. Default: 41
 * `trace` - can be set to any positive, rational number or 0 (zero). This indicates the frequency at which route traces are done by specifying a duration (in milliseconds) to wait between each route trace. A new route trace will not begin until the previous one has finished, so setting this to values lower than network latency to the target is typically meaningless. A value of 0 (zero) indicates that route traces should not be performed. Default: 0 (zero)
 * `hops` - can be set to any positive integer. This indicates the number of network hops to be used as an upper limit on route traces. The default value typically suffices in most situations. Default: 30
+* `scan` - can be set to any positive, rational number or 0 (zero). This indicates the frequency at which route traces are done by specifying a duration (in milliseconds) to wait between each port scan. A value of 0 (zero) indicates that port scans should not be done. Default: 0 (zero)
 * `json` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the output of this host's statistics will be in JSON format rather than the plain-text format. Default: `False`
 * `timestamp` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the outputs of this hosts's statistics will always contain timestamps indicating the time at which printing occurs. Default: `True`
 
