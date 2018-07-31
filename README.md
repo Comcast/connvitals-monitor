@@ -89,5 +89,5 @@ Starting with version 4.0, each statistic is reported individually, and not bund
 Here's an example of a configuration file that will gather port scans and ping statistics for 10 pings per run each having a payload of 1337B - but not route traces - from google.com every half-second with output in `connvitals`'s standard, plain-text output, and do limited port scanning and traceroutes (to a maximum of 30 hops) - but not pings - on the address 127.0.0.1 (localhost) every 50 milliseconds with output in JSON format:
 ```
 google.com ping=500 payload=1337 scan=500
-127.0.0.1 trace=50 json=1 scan=50
+127.0.0.1 trace=50 json=1 scan=50 ping=0
 ```
