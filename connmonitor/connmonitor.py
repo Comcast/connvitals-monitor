@@ -54,7 +54,7 @@ class Config():
 	NUMPINGS = 10
 	PAYLOAD = b'The very model of a modern Major General.'
 	PING = 500.0
-	PORTSCAN = 0.0
+	SCAN = 0.0
 	TIMESTAMP = True
 	TRACE = 0.0
 
