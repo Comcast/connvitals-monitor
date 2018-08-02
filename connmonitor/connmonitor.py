@@ -101,7 +101,6 @@ class Collector(collector.Collector):
 					waitables.append(pool.apply_async(self.portscanloop, (), error_callback=utils.error))
 				if self.conf.TRACE:
 					waitables.append(pool.apply_async(self.traceloop, (), error_callback=utils.error))
-
 				if self.conf.PING:
 					waitables.append(pool.apply_async(self.pingloop, (), error_callback=utils.error))
 
@@ -134,13 +133,15 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONTrace if self.conf.JSON else self.printTrace
 		try:
-			while True:
-				result = traceroute.trace(self.host, self.ID, self.conf)
-				if self.trace != result:
-					self.trace = result
-					printFunc(result)
+			with traceroute.Tracer(self.host, self.ID, self.conf.HOPS) as tracer:
+				# The calvary's here, love!
+				while True:
+					result = tracer.trace()
+					if self.trace != result:
+						self.trace = result
+						printFunc(result)
 
-				time.sleep(self.conf.TRACE / 1000)
+					time.sleep(self.conf.TRACE / 1000)
 		except KeyboardInterrupt:
 			pass
 
@@ -151,9 +152,7 @@ class Collector(collector.Collector):
 		printFunc = self.printJSONScan if self.conf.JSON else self.printScan
 		try:
 			with ports.Scanner(self.host) as scanner:
-				i=1
 				while True:
-					print("Iteration #", i, sep='', flush=True)
 					printFunc(scanner.scan())
 					time.sleep(self.conf.SCAN / 1000)
 		except OSError as e:
@@ -300,6 +299,7 @@ def main() -> int:
 	except Exception as e:
 		utils.error(e)
 		return 1
+	print() # Flush the buffer
 	return 0
 
 def readConf():
@@ -330,7 +330,7 @@ def readConf():
 	for i,host in enumerate(hosts):
 
 		# ignore empty lines
-		if not host:
+		if not host.strip():
 			continue
 
 		args = host.split()
