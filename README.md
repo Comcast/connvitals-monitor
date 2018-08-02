@@ -58,7 +58,7 @@ host2 ping=50 numpings=10 payload=41
 host3 trace=1000 hops=10
 ...
 ```
-Note that config lines (except the hostname part, when applicable) are cAsE-iNsEnSiTiVe.
+Note that config lines (except the hostname part, when applicable) are cAsE-iNsEnSiTiVe. Empty lines are ignored at any point.
 
 Each line of the config *must* begin with a host. This can be either an IP address or a Fully-Qualified Domain Name (FQDN). Currently, IPv6 is not supported, and if an FQDN can only be resolved to an IPv6 address it will not be queried.
 After the host, a list of options in the format `<name>=<value>` can be specified. If an option is not specified, a default value is used. The options and their valid values are:
@@ -72,7 +72,7 @@ After the host, a list of options in the format `<name>=<value>` can be specifie
 * `json` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the output of this host's statistics will be in JSON format rather than the plain-text format. Default: `False`
 * `timestamp` - can be set to any integer or 0 (zero), _or_ one of the Python boolean constants: `True` and `False`. If this value is any non-zero integer or `True`, then the outputs of this hosts's statistics will always contain timestamps indicating the time at which printing occurs. Default: `True`
 
-Configuration options can appear in any order and can be separated by any amount/kind of whitespace except for line terminators (Line Feed, Carriage Return, Form Feed etc.). However, the same option _cannot_ be specified multiple times on the same line, even if it always appears with the same value.
+Configuration options can appear in any order and can be separated by any amount/kind of whitespace except for line terminators (Line Feed, Carriage Return, Form Feed etc.). However, the same option _cannot_ be specified multiple times on the same line, even if it always appears with the same value. Furthermore, there must be no space on either side of the `=` assigning a value to a config variable.
 
 
 ### Output Format

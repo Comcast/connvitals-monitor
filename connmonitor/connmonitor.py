@@ -150,10 +150,15 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONScan if self.conf.JSON else self.printScan
 		try:
-			with multiprocessing.pool.ThreadPool(3) as pool:
+			with ports.Scanner(self.host) as scanner:
+				i=1
 				while True:
-					printFunc(ports.portScan(self.host, pool))
+					print("Iteration #", i, sep='', flush=True)
+					printFunc(scanner.scan())
 					time.sleep(self.conf.SCAN / 1000)
+		except OSError as e:
+			utils.error("Unknown error occurred")
+			utils.error(e)
 		except KeyboardInterrupt:
 			pass
 
@@ -323,6 +328,11 @@ def readConf():
 
 	#parse args
 	for i,host in enumerate(hosts):
+
+		# ignore empty lines
+		if not host:
+			continue
+
 		args = host.split()
 		host = args.pop(0)
 		addrinfo = utils.getaddr(host)
