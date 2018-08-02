@@ -46,7 +46,7 @@ Upon receiving `SIGHUP` (e.g. when the terminal used to run it is closed), `conn
 ### As a `systemd` daemon
 Starting with version 1.2.1, connvitals-monitor (unfortunately) comes packaged with a systemd Unit File, and will attempt to install it. To run the daemon, simply run `systemctl start connmonitor` (as root), and to stop it run `systemctl stop connmonitor` (also as root). By default, the monitor will log its `stdout` in JSON format to `/var/log/connmonitor.log`, and its `stderr` to `/var/log/connmonitor.err`. Whenever the monitor is started, it looks for a configuration file at `/var/run/connmonitor.conf`, and creates it if it does not exist with the following default contents (see 'Input Format'):
 ```
-localhost trace=500 scan=500
+localhost trace=5000 scan=5000
 ```
 The monitor service does **not** check for filesystem updates to that config file; if you wish to edit it you may safely do so, but should run `systemctl reload connmonitor` to read in the new configuration.
 

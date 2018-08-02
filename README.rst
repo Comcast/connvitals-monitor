@@ -122,7 +122,7 @@ Format'):
 
 ::
 
-    localhost trace=500 scan=500
+    localhost trace=5000 scan=5000
 
 The monitor service does **not** check for filesystem updates to that
 config file; if you wish to edit it you may safely do so, but should run
