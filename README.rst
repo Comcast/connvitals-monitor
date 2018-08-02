@@ -122,7 +122,7 @@ Format'):
 
 ::
 
-    localhost trace=5000 scan=5000
+    localhost trace=5000 scan=5000 json=True
 
 The monitor service does **not** check for filesystem updates to that
 config file; if you wish to edit it you may safely do so, but should run
