@@ -19,7 +19,7 @@ import sys
 import signal
 import time
 import multiprocessing
-from connvitals import utils, collector, ports, traceroute
+from connvitals import utils, collector, ports, traceroute, ping
 
 def optionalFlagParse(raw:str) -> bool:
 	"""
@@ -119,9 +119,9 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
 		try:
-			with multiprocessing.pool.ThreadPool() as pool:
+			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
-					self.ping(pool)
+					self.ping(pool, pinger)
 					printFunc()
 					time.sleep(self.conf.PING / 1000)
 		except KeyboardInterrupt:
