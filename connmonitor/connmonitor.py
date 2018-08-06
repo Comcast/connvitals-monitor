@@ -15,11 +15,14 @@
 """
 A monitor for connection vitals, based on the connvitals program.
 """
+import logging
 import sys
 import signal
 import time
 import multiprocessing
 from connvitals import utils, collector, ports, traceroute, ping
+
+logging.getLogger().setLevel(logging.INFO)
 
 def optionalFlagParse(raw:str) -> bool:
 	"""
@@ -111,6 +114,8 @@ class Collector(collector.Collector):
 				pass
 			except Exception as e:
 				utils.error(e, 1)
+				if __debug__:
+					logging.debug("Unknown Error Occurred: %s", e, exc_info=True, stack_info=True)
 
 	def pingloop(self):
 		"""
