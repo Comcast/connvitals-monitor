@@ -22,6 +22,7 @@ import time
 import multiprocessing
 from connvitals import utils, collector, ports, traceroute, ping
 
+logging.basicConfig(level=logging.INFO)
 logging.getLogger().setLevel(logging.INFO)
 
 def optionalFlagParse(raw:str) -> bool:
