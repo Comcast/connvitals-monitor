@@ -22,8 +22,8 @@ import time
 import multiprocessing
 from connvitals import utils, collector, ports, traceroute, ping
 
-logging.basicConfig(level=logging.INFO)
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger().setLevel(logging.DEBUG)
 
 def optionalFlagParse(raw:str) -> bool:
 	"""
@@ -102,21 +102,21 @@ class Collector(collector.Collector):
 				waitables = []
 
 				if self.conf.SCAN:
-					waitables.append(pool.apply_async(self.portscanloop, (), error_callback=utils.error))
+					waitables.append(pool.apply_async(self.portscanloop, ()))
 				if self.conf.TRACE:
-					waitables.append(pool.apply_async(self.traceloop, (), error_callback=utils.error))
+					waitables.append(pool.apply_async(self.traceloop, ()))
 				if self.conf.PING:
-					waitables.append(pool.apply_async(self.pingloop, (), error_callback=utils.error))
+					waitables.append(pool.apply_async(self.pingloop, ()))
 
 				for waitable in waitables:
 					waitable.wait()
 
 			except KeyboardInterrupt:
 				pass
-			except Exception as e:
-				utils.error(e, 1)
-				if __debug__:
-					logging.debug("Unknown Error Occurred: %s", e, exc_info=True, stack_info=True)
+			# except Exception as e:
+			# 	utils.error(e, 1)
+			# 	if __debug__:
+			# 		logging.debug("Unknown Error Occurred: %s", e, exc_info=True, stack_info=True)
 
 	def pingloop(self):
 		"""
