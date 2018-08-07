@@ -100,7 +100,7 @@ class Collector(collector.Collector):
 		with multiprocessing.pool.ThreadPool(3) as pool:
 			try:
 				waitables = []
-
+				print(self.conf)
 				if self.conf.SCAN:
 					waitables.append(pool.apply_async(self.portscanloop, ()))
 				if self.conf.TRACE:
@@ -109,6 +109,7 @@ class Collector(collector.Collector):
 					waitables.append(pool.apply_async(self.pingloop, ()))
 
 				for waitable in waitables:
+					print("waiting...")
 					waitable.wait()
 
 			except KeyboardInterrupt:
@@ -127,9 +128,13 @@ class Collector(collector.Collector):
 		try:
 			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
+					print("pinging...")
 					self.ping(pool, pinger)
+					print("pinged")
 					printFunc()
+					print("sleeping")
 					time.sleep(self.conf.PING / 1000)
+					print("slept")
 		except KeyboardInterrupt:
 			pass
 
@@ -293,6 +298,7 @@ def main() -> int:
 			try:
 				time.sleep(5)
 				if not collectors or not any(c.is_alive() for c in collectors):
+					print("wat")
 					return 1
 			except ContinueException:
 				pass
@@ -302,9 +308,9 @@ def main() -> int:
 			c.pipe[0].send(True)
 		for c in collectors:
 			c.join()
-	except Exception as e:
-		utils.error(e)
-		return 1
+	#except Exception as e:
+	#	utils.error(e)
+	#	return 1
 	print() # Flush the buffer
 	return 0
 
