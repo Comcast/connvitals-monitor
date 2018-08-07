@@ -132,6 +132,8 @@ class Collector(collector.Collector):
 					time.sleep(self.conf.PING / 1000)
 		except KeyboardInterrupt:
 			pass
+		except OSError:
+			logging.debug("what is even happening?", exc_info=True, stack_info=True)
 
 	def traceloop(self):
 		"""
