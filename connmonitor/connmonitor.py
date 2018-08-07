@@ -137,6 +137,8 @@ class Collector(collector.Collector):
 					print("slept")
 		except KeyboardInterrupt:
 			pass
+		except OSError:
+			logging.debug("what is even happening?", exc_info=True, stack_info=True)
 
 	def traceloop(self):
 		"""
