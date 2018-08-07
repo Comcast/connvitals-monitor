@@ -106,7 +106,6 @@ class Collector(collector.Collector):
 					waitables.append(pool.apply_async(self.pingloop, ()))
 
 				for waitable in waitables:
-					print("waiting...")
 					waitable.wait()
 
 			except KeyboardInterrupt:
@@ -124,7 +123,10 @@ class Collector(collector.Collector):
 		try:
 			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
-					self.ping(pool, pinger)
+					try:
+						self.ping(pool, pinger)
+					except multiprocessing.TimeoutError:
+						self.result[0] = utils.PingResult(-1, -1, -1, -1, 100.)
 					printFunc()
 					time.sleep(self.conf.PING / 1000)
 		except KeyboardInterrupt:
@@ -158,9 +160,6 @@ class Collector(collector.Collector):
 				while True:
 					printFunc(scanner.scan())
 					time.sleep(self.conf.SCAN / 1000)
-		except OSError as e:
-			utils.error("Unknown error occurred")
-			utils.error(e)
 		except KeyboardInterrupt:
 			pass
 
