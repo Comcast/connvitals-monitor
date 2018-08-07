@@ -25,7 +25,7 @@ AssertPathIsDirectory=/var/log
 Type=simple
 
 # Before Starting, sets up a configuration file if none exists
-ExecStartPre=/bin/bash -c 'if [[ ! -f /var/run/connmonitor.conf ]]; then /usr/bin/printf "localhost trace=500 scan=500\n" > /var/run/connmonitor.conf; fi'
+ExecStartPre=/bin/bash -c 'if [[ ! -f /var/run/connmonitor.conf ]]; then /bin/echo "localhost trace=5000 scan=5000 json=True" > /var/run/connmonitor.conf; fi'
 
 # Logs the output
 ExecStart=/bin/bash -c 'exec /usr/bin/connmonitor /var/run/connmonitor.conf 1>/var/log/connmonitor.log 2>/var/log/connmonitor.err'

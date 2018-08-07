@@ -15,11 +15,13 @@
 """
 A monitor for connection vitals, based on the connvitals program.
 """
+
 import sys
 import signal
 import time
 import multiprocessing
-from connvitals import utils, collector, ports, traceroute
+from connvitals import utils, collector, ports, traceroute, ping
+
 
 def optionalFlagParse(raw:str) -> bool:
 	"""
@@ -96,14 +98,12 @@ class Collector(collector.Collector):
 		with multiprocessing.pool.ThreadPool(3) as pool:
 			try:
 				waitables = []
-
 				if self.conf.SCAN:
-					waitables.append(pool.apply_async(self.portscanloop, (), error_callback=utils.error))
+					waitables.append(pool.apply_async(self.portscanloop, ()))
 				if self.conf.TRACE:
-					waitables.append(pool.apply_async(self.traceloop, (), error_callback=utils.error))
-
+					waitables.append(pool.apply_async(self.traceloop, ()))
 				if self.conf.PING:
-					waitables.append(pool.apply_async(self.pingloop, (), error_callback=utils.error))
+					waitables.append(pool.apply_async(self.pingloop, ()))
 
 				for waitable in waitables:
 					waitable.wait()
@@ -111,6 +111,7 @@ class Collector(collector.Collector):
 			except KeyboardInterrupt:
 				pass
 			except Exception as e:
+				utils.error("Unknown Error Occurred while polling.")
 				utils.error(e, 1)
 
 	def pingloop(self):
@@ -120,9 +121,12 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
 		try:
-			with multiprocessing.pool.ThreadPool() as pool:
+			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
-					self.ping(pool)
+					try:
+						self.ping(pool, pinger)
+					except multiprocessing.TimeoutError:
+						self.result[0] = utils.PingResult(-1, -1, -1, -1, 100.)
 					printFunc()
 					time.sleep(self.conf.PING / 1000)
 		except KeyboardInterrupt:
@@ -134,13 +138,15 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONTrace if self.conf.JSON else self.printTrace
 		try:
-			while True:
-				result = traceroute.trace(self.host, self.ID, self.conf)
-				if self.trace != result:
-					self.trace = result
-					printFunc(result)
+			with traceroute.Tracer(self.host, self.ID, self.conf.HOPS) as tracer:
+				# The calvary's here, love!
+				while True:
+					result = tracer.trace()
+					if self.trace != result:
+						self.trace = result
+						printFunc(result)
 
-				time.sleep(self.conf.TRACE / 1000)
+					time.sleep(self.conf.TRACE / 1000)
 		except KeyboardInterrupt:
 			pass
 
@@ -150,9 +156,9 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONScan if self.conf.JSON else self.printScan
 		try:
-			with multiprocessing.pool.ThreadPool(3) as pool:
+			with ports.Scanner(self.host) as scanner:
 				while True:
-					printFunc(ports.portScan(self.host, pool))
+					printFunc(scanner.scan())
 					time.sleep(self.conf.SCAN / 1000)
 		except KeyboardInterrupt:
 			pass
@@ -283,6 +289,7 @@ def main() -> int:
 			try:
 				time.sleep(5)
 				if not collectors or not any(c.is_alive() for c in collectors):
+					print("wat")
 					return 1
 			except ContinueException:
 				pass
@@ -295,6 +302,7 @@ def main() -> int:
 	except Exception as e:
 		utils.error(e)
 		return 1
+	print() # Flush the buffer
 	return 0
 
 def readConf():
@@ -323,6 +331,11 @@ def readConf():
 
 	#parse args
 	for i,host in enumerate(hosts):
+
+		# ignore empty lines
+		if not host.strip():
+			continue
+
 		args = host.split()
 		host = args.pop(0)
 		addrinfo = utils.getaddr(host)

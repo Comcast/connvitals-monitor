@@ -122,7 +122,7 @@ Format'):
 
 ::
 
-    localhost trace=500 scan=500
+    localhost trace=5000 scan=5000 json=True
 
 The monitor service does **not** check for filesystem updates to that
 config file; if you wish to edit it you may safely do so, but should run
@@ -141,7 +141,7 @@ connmonitor expects input formatted like this:
     ...
 
 Note that config lines (except the hostname part, when applicable) are
-cAsE-iNsEnSiTiVe.
+cAsE-iNsEnSiTiVe. Empty lines are ignored at any point.
 
 | Each line of the config *must* begin with a host. This can be either
   an IP address or a Fully-Qualified Domain Name (FQDN). Currently, IPv6
@@ -192,7 +192,8 @@ Configuration options can appear in any order and can be separated by
 any amount/kind of whitespace except for line terminators (Line Feed,
 Carriage Return, Form Feed etc.). However, the same option *cannot* be
 specified multiple times on the same line, even if it always appears
-with the same value.
+with the same value. Furthermore, there must be no space on either side
+of the ``=`` assigning a value to a config variable.
 
 Output Format
 ~~~~~~~~~~~~~
