@@ -113,7 +113,7 @@ class Collector(collector.Collector):
 				pass
 			except Exception as e:
 				utils.error("Unknown Error Occurred while polling.")
-			 	utils.error(e, 1)
+				utils.error(e, 1)
 
 	def pingloop(self):
 		"""
