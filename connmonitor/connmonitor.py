@@ -15,15 +15,13 @@
 """
 A monitor for connection vitals, based on the connvitals program.
 """
-import logging
+
 import sys
 import signal
 import time
 import multiprocessing
 from connvitals import utils, collector, ports, traceroute, ping
 
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger().setLevel(logging.DEBUG)
 
 def optionalFlagParse(raw:str) -> bool:
 	"""
@@ -100,7 +98,6 @@ class Collector(collector.Collector):
 		with multiprocessing.pool.ThreadPool(3) as pool:
 			try:
 				waitables = []
-				print(self.conf)
 				if self.conf.SCAN:
 					waitables.append(pool.apply_async(self.portscanloop, ()))
 				if self.conf.TRACE:
@@ -114,10 +111,9 @@ class Collector(collector.Collector):
 
 			except KeyboardInterrupt:
 				pass
-			# except Exception as e:
-			# 	utils.error(e, 1)
-			# 	if __debug__:
-			# 		logging.debug("Unknown Error Occurred: %s", e, exc_info=True, stack_info=True)
+			except Exception as e:
+				utils.error("Unknown Error Occurred while polling.")
+			 	utils.error(e, 1)
 
 	def pingloop(self):
 		"""
@@ -128,17 +124,11 @@ class Collector(collector.Collector):
 		try:
 			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
-					print("pinging...")
 					self.ping(pool, pinger)
-					print("pinged")
 					printFunc()
-					print("sleeping")
 					time.sleep(self.conf.PING / 1000)
-					print("slept")
 		except KeyboardInterrupt:
 			pass
-		except OSError:
-			logging.debug("what is even happening?", exc_info=True, stack_info=True)
 
 	def traceloop(self):
 		"""
@@ -310,9 +300,9 @@ def main() -> int:
 			c.pipe[0].send(True)
 		for c in collectors:
 			c.join()
-	#except Exception as e:
-	#	utils.error(e)
-	#	return 1
+	except Exception as e:
+		utils.error(e)
+		return 1
 	print() # Flush the buffer
 	return 0
 
