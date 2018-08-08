@@ -254,7 +254,12 @@ def terminate(unused_sig: int, unused_frame: object):
 	# signal to the  threads to stop
 	for c in collectors:
 		if c is not None:
-			c.terminate()
+			try:
+				c.terminate()
+			except AttributeError:
+				# The collector caught the SIGTERM and exited itself in between
+				# our check and this `.terminate` statement, so now it's `None`
+				pass
 
 	# wait for the threads to exit
 	for c in collectors:
