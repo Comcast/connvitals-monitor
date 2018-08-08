@@ -108,6 +108,9 @@ class Collector(collector.Collector):
 				for waitable in waitables:
 					waitable.wait()
 
+				pool.close()
+				pool.join()
+
 			except KeyboardInterrupt:
 				pass
 			except Exception as e:
@@ -121,7 +124,7 @@ class Collector(collector.Collector):
 		"""
 		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
 		try:
-			with multiprocessing.pool.ThreadPool() as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
+			with multiprocessing.pool.ThreadPool(self.conf.NUMPINGS) as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
 					try:
 						self.ping(pool, pinger)
