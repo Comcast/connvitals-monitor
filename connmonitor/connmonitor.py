@@ -99,11 +99,11 @@ class Collector(collector.Collector):
 			try:
 				waitables = []
 				if self.conf.SCAN:
-					waitables.append(pool.apply_async(self.portscanloop, ()))
+					waitables.append(pool.apply_async(self.portscanloop, (), error_callback=utils.error))
 				if self.conf.TRACE:
-					waitables.append(pool.apply_async(self.traceloop, ()))
+					waitables.append(pool.apply_async(self.traceloop, (), error_callback=utils.error))
 				if self.conf.PING:
-					waitables.append(pool.apply_async(self.pingloop, ()))
+					waitables.append(pool.apply_async(self.pingloop, (), error_callback=utils.error))
 
 				for waitable in waitables:
 					waitable.wait()
@@ -112,7 +112,7 @@ class Collector(collector.Collector):
 				pass
 			except Exception as e:
 				utils.error("Unknown Error Occurred while polling.")
-				utils.error(e, 1)
+				utils.error(e)
 
 	def pingloop(self):
 		"""
