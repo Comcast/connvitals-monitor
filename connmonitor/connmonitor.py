@@ -176,23 +176,27 @@ class Collector(collector.Collector):
 		except KeyboardInterrupt:
 			pass
 
-	def printPing(self):
+	def printPing(self, pr:utils.PingResult = None):
 		"""
 		Prints a ping result, in plaintext
 		"""
+		if pr is None:
+			pr = self.result[0]
 		if self.conf.TIMESTAMP:
-			print(self.plaintextHdr, time.ctime(), str(self.result[0]), sep='\n', flush=True)
+			print(self.plaintextHdr, time.ctime(), str(pr), sep='\n', flush=True)
 		else:
-			print(self.plaintextHdr, str(self.result[0]), sep='\n', flush=True)
+			print(self.plaintextHdr, str(pr), sep='\n', flush=True)
 
-	def printJSONPing(self):
+	def printJSONPing(self, pr:utils.PingResult = None):
 		"""
 		Prints a ping result, in JSON
 		"""
+		if pr is None:
+			pr = self.result[0]
 		if self.conf.TIMESTAMP:
-			print(self.jsonHdr % (time.time() * 1000, '"ping":' + repr(self.result[0])), flush=True)
+			print(self.jsonHdr % (time.time() * 1000, '"ping":' + repr(pr)), flush=True)
 		else:
-			print(self.jsonHdr % ('"ping":' + repr(self.result[0])), flush=True)
+			print(self.jsonHdr % ('"ping":' + repr(pr)), flush=True)
 
 	def printTrace(self, trace:utils.Trace):
 		"""
