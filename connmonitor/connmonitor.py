@@ -123,8 +123,7 @@ class Collector(collector.Collector):
 		Runs a loop for collecting ping statistics as specified in the
 		configuration.
 		"""
-		# printFunc = self.printJSONPing if self.conf.JSON else self.printPing
-		printFunc = (lambda x: print(repr(x), flush=True)) if self.conf.JSON else (lambda x: print(str(x), flush=True))
+		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
 		try:
 			# with multiprocessing.pool.ThreadPool(self.conf.NUMPINGS) as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				# while True:
