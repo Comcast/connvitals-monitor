@@ -20,6 +20,7 @@ import sys
 import signal
 import time
 import multiprocessing
+import socket
 from connvitals import utils, collector, ports, traceroute, ping
 
 
@@ -122,15 +123,24 @@ class Collector(collector.Collector):
 		Runs a loop for collecting ping statistics as specified in the
 		configuration.
 		"""
-		printFunc = self.printJSONPing if self.conf.JSON else self.printPing
+		# printFunc = self.printJSONPing if self.conf.JSON else self.printPing
+		printFunc = (lambda x: print(repr(x), flush=True)) if self.conf.JSON else (lambda x: print(str(x), flush=True))
 		try:
-			with multiprocessing.pool.ThreadPool(self.conf.NUMPINGS) as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
+			# with multiprocessing.pool.ThreadPool(self.conf.NUMPINGS) as pool, ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
+				# while True:
+				# 	try:
+				# 		self.ping(pool, pinger)
+				# 	except multiprocessing.TimeoutError:
+				# 		self.result[0] = utils.PingResult(-1, -1, -1, -1, 100.)
+				# 	printFunc()
+				# 	time.sleep(self.conf.PING / 1000)
+			with ping.Pinger(self.host, bytes(self.conf.PAYLOAD)) as pinger:
 				while True:
 					try:
-						self.ping(pool, pinger)
-					except multiprocessing.TimeoutError:
-						self.result[0] = utils.PingResult(-1, -1, -1, -1, 100.)
-					printFunc()
+						printFunc(pinger.sendAll(self.conf.NUMPINGS))
+					except (socket.gaierror, OSError, TimeoutError) as e:
+						utils.error(e)
+						printFunc(utils.PingResult(-1, -1, -1, -1, 100.))
 					time.sleep(self.conf.PING / 1000)
 		except KeyboardInterrupt:
 			pass
@@ -297,7 +307,6 @@ def main() -> int:
 			try:
 				time.sleep(5)
 				if not collectors or not any(c.is_alive() for c in collectors):
-					print("wat")
 					return 1
 			except ContinueException:
 				pass
