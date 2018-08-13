@@ -96,7 +96,9 @@ class Collector(collector.Collector):
 			self.jsonHdr = '{"addr":"%s", "name":"%s", %%s}'
 		self.jsonHdr %= (self.host[0], self.hostname)
 
-		with multiprocessing.pool.ThreadPool(3) as pool:
+		numThreads = sum(int(bool(x)) for x in (self.conf.PING, self.conf.TRACE, self.conf.SCAN))
+
+		with multiprocessing.pool.ThreadPool(numThreads) as pool:
 			try:
 				waitables = []
 				if self.conf.SCAN:
